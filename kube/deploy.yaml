@@ -1,0 +1,93 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hellogo
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx-hellogo
+  namespace: hellogo
+  annotations:
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/ssl-passthrough: "false"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: hellogo.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: hellogo
+            port:
+              name: http
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: key-for-docker
+  namespace: hellogo
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: ewoJImF1dGhzIjogewoJCSJodHRwczovL2luZGV4LmRvY2tlci5pby92MS8iOiB7CgkJCSJhdXRoIjogImNXbDFaM1Z2WW1sdU9tUmphM0pmY0dGMFgxSkZjMjVpUmkxcmFWcFZNWFJ0VVZkWGVUTlJNV2xNWDBwbk5BPT0iCgkJfQoJfQp9
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: hellogo-auth
+  namespace: hellogo
+imagePullSecrets:
+  - name: key-for-docker
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hellogo
+  namespace: hellogo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: hellogo
+  template:
+    metadata:
+      labels:
+        name: hellogo
+    spec:
+      serviceAccountName: hellogo-auth
+      initContainers:
+      - name: migration
+        image: qiuguobin/hellogo
+        env:
+        - name: GOOSE_DRIVER
+          value: mysql
+        - name: GOOSE_DBSTRING
+          value: 'root:111111@tcp(mysql-service.mysql.svc.cluster.local:3306)/test?charset=utf8mb4&parseTime=True&loc=Local'
+        - name: GOOSE_MIGRATION_DIR
+          value: /app/db/migrations
+        command: ["goose", "up"]
+      containers:
+      - name: hellogo
+        image: qiuguobin/hellogo
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hellogo
+  namespace: hellogo
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 8000
+    targetPort: 8000
+  selector:
+    name: hellogo
