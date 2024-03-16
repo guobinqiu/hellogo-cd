@@ -6,4 +6,4 @@ resources:
 images:
 - name: qiuguobin/hellogo
   newName: qiuguobin/hellogo
-  newTag: 340549116c028899e5638ea2cc7d46ce69490533
+  newTag: 69d7e603775155f8310809727bbfddc1e0bec9f1

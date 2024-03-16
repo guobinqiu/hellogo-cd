@@ -1,0 +1,22 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rollback
+  namespace: hellogo
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: hellogo-auth
+      containers:
+      - name: rollback
+        image: qiuguobin/hellogo
+        env:
+        - name: GOOSE_DRIVER
+          value: mysql
+        - name: GOOSE_DBSTRING
+          value: 'root:111111@tcp(mysql-service.mysql.svc.cluster.local:3306)/test?charset=utf8mb4&parseTime=True&loc=Local'
+        - name: GOOSE_MIGRATION_DIR
+          value: /app/db/migrations
+        command: ["goose", "down-to", "20240313045757"]
